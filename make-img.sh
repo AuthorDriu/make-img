@@ -68,7 +68,7 @@ done
 
 if [[ -z $SIZE_UNIT ]]; then
 	SIZE_UNIT="M"
-	echo Unit size is not specified. Using \"$SIZE_UNIT\" suffix '(kilobytes)' >&2
+	echo Unit size is not specified. Using \"$SIZE_UNIT\" suffix '(Megabytes)' >&2
 fi
 
 if [[ -z $SIZE ]]; then
@@ -80,6 +80,21 @@ if [[ -z $FILE_SYSTEM ]]; then
 	FILE_SYSTEM=ext4
 	echo File system is not specified. Using \"$FILE_SYSTEM\" >&2
 fi
+
+
+case $SIZE_UNIT in
+	B | K | M | G | T ) ;;
+	* )
+	echo "--unit-size must be a valid suffix. See man dd" >&2
+	exit $WRONG_FLAG
+	;;
+esac
+
+#if ! [[ $SIZE =~ '^[0-9]+$' ]]; then
+#	echo "--size must be a number" >&2
+#	exit $WRONG_FLAG
+#fi
+
 
 if [[ -z $IMG_PATH ]]; then
 	IMG_PATH=$(pwd)/"$FILE_SYSTEM.img"
