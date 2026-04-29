@@ -9,9 +9,10 @@ CANCELED=2
 DD_ERROR=3
 MKFS_ERROR=4
 
+# Exit if $1 is not y or Y
 yN_prompt_wall() {
 	case $1 in
-		Y ) ;;
+		y | Y ) ;;
 		* ) exit $CANCELED ;;
 	esac
 }
