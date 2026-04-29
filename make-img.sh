@@ -9,32 +9,14 @@ CANCELED=2
 DD_ERROR=3
 MKFS_ERROR=4
 
-
-# A simple [y/N] prompt function
-# N - default
-# return y or n
-yN_prompt() {
-	local query=$*
-	while 1; do
-		if [[ -n "$query" ]]; then
-			echo $query
-		fi
-
-		read response
-		if [[ -z $response || $response == "n" || $response == "N" ]]; then
-			echo n
-			break
-		fi
-		if [[ $response == "y" || $response == "Y" ]]; then
-			echo y
-			break
-		fi
-	done
+yN_prompt_wall() {
+	case $1 in
+		Y ) ;;
+		* ) exit $CANCELED ;;
+	esac
 }
 
-
 # We can add new flags if we want it
-
 while [[ $# -gt 0 ]]; 
 	do case "$1" in -h|--help)
 			echo make-img.sh
@@ -48,7 +30,7 @@ while [[ $# -gt 0 ]];
 			echo -e "\t-p|--IMG-path\tset path to creating IMG"
 			echo DEFAULTS:
 			echo -e "\t--size-unit=M"
-			echo -e "\t--size=50"
+			echo -e "\t--size=512"
 			echo -e "\t--file-system=ext4"
 			echo -e "\t--img-path=./{file system}.img"
 			echo
@@ -83,12 +65,12 @@ done
 
 if [[ -z $SIZE_UNIT ]]; then
 	SIZE_UNIT="M"
-	echo Unit size is not specified. Using \"K\" suffix '(kilobytes)' >&2
+	echo Unit size is not specified. Using \"$SIZE_UNIT\" suffix '(kilobytes)' >&2
 fi
 
 if [[ -z $SIZE ]]; then
-	SIZE="50"
-	echo Block size is not specified. Using $BLOCK_SIZE >&2
+	SIZE="512"
+	echo Block size is not specified. Using $SIZE >&2
 fi
 
 if [[ -z $FILE_SYSTEM ]]; then
@@ -99,35 +81,55 @@ fi
 if [[ -z $IMG_PATH ]]; then
 	IMG_PATH=$(pwd)/"$FILE_SYSTEM.img"
 	echo IMG file path is not specified. Using \"$IMG_PATH\" >&2
-	response=$(yN_prompt Accept? "[y/N]")
-	if [[ $response == "n" ]]; then
-		echo Use make-img.sh "--help|-h" to see flags
-		exit $CANCELED
-	fi
+	
+	echo Accept? '[y/N]'
+	read resp
+	yN_prompt_wall $resp
 fi
 
 # WE ALMOST DONE!
 
 if [[ -f "$IMG_PATH" ]]; then
-	echo "Found IMG... Removing"
+	echo "Found IMG with the same name"
+
+	echo Delete it? '[y/N]'
+	read resp
+	yN_prompt_wall $resp
+
 	rm -f "$IMG_PATH"
 fi
 
 echo Creating IMG file filled with zeroes...
-dd if=/dev/zero of="$IMG_PATH" bs=$SIZE$SIZE_UNIT count=1 &>/dev/null
+dd if=/dev/zero of="$IMG_PATH" bs=$SIZE$SIZE_UNIT count=1 1>/dev/null 2>.dderr
 ddcode=$?
 if [[ $ddcode -ne 0 ]]; then
 	echo Failed to create IMG file... dd exited with code $ddcode >&2
+	err=$(cat .dderr)
+
+	if [[ -n $err ]]; then
+		echo "Error text:" 1>&2
+	fi
+
+	rm .dderr
 	exit $DD_ERROR
 fi
+rm .dderr
 
 echo Creating file system...
-mkfs -t $FILE_SYSTEM "$IMG_PATH" &>/dev/null
+mkfs -t $FILE_SYSTEM "$IMG_PATH" 1>/dev/null 2>.mkfserr
 mkfscode=$?
 if [[ $mkfscode -ne 0 ]]; then
 	echo Failed to create file system... mkfs exited with code $mkfscode >&2
+	err=$(cat .mkfserr)
+	
+	if [[ -n $err ]]; then
+		echo "Error text:" 1>&2
+	fi
+
+	rm .mkfserr
 	exit $MKFS_ERROR
 fi
+rm .mkfserr
 
 echo Done!
 echo Now you can mount $IMG_PATH where you want using:
