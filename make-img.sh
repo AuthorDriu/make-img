@@ -21,14 +21,16 @@ yN_prompt_wall() {
 while [[ $# -gt 0 ]]; 
 	do case "$1" in -h|--help)
 			echo make-img.sh
-			echo -e "\tusing:" make-img.sh [options]
+			echo -e "\tusing:" make-img.sh '[options]'
 			echo Create an IMG file with specified fily system
+			echo
 			echo OPTIONS:
 			echo -e "\t-h|--help\tshow this message"
 			echo -e "\t-u|--size-unit\tset unit size (see man dd for details)"
 			echo -e "\t-s|--size\tset file size"
 			echo -e "\t-f|--file-system\tset file system (see man mkfs for details)"
 			echo -e "\t-p|--IMG-path\tset path to creating IMG"
+			echo
 			echo DEFAULTS:
 			echo -e "\t--size-unit=M"
 			echo -e "\t--size=512"
@@ -83,7 +85,7 @@ if [[ -z $IMG_PATH ]]; then
 	IMG_PATH=$(pwd)/"$FILE_SYSTEM.img"
 	echo IMG file path is not specified. Using \"$IMG_PATH\" >&2
 	
-	echo Accept? '[y/N]'
+	echo -n Accept? '[y/N] '
 	read resp
 	yN_prompt_wall $resp
 fi
@@ -93,7 +95,7 @@ fi
 if [[ -f "$IMG_PATH" ]]; then
 	echo "Found IMG with the same name"
 
-	echo Delete it? '[y/N]'
+	echo -n Delete it? '[y/N] '
 	read resp
 	yN_prompt_wall $resp
 
@@ -101,36 +103,34 @@ if [[ -f "$IMG_PATH" ]]; then
 fi
 
 echo Creating IMG file filled with zeroes...
-dd if=/dev/zero of="$IMG_PATH" bs=$SIZE$SIZE_UNIT count=1 1>/dev/null 2>.dderr
+dderr=$(mktemp)
+dd if=/dev/zero of="$IMG_PATH" bs=$SIZE$SIZE_UNIT count=1 1>/dev/null 2>$dderr
 ddcode=$?
 if [[ $ddcode -ne 0 ]]; then
 	echo Failed to create IMG file... dd exited with code $ddcode >&2
-	err=$(cat .dderr)
+	err=$(cat $dderr)
 
 	if [[ -n $err ]]; then
 		echo "Error text:" 1>&2
 	fi
 
-	rm .dderr
 	exit $DD_ERROR
 fi
-rm .dderr
 
 echo Creating file system...
-mkfs -t $FILE_SYSTEM "$IMG_PATH" 1>/dev/null 2>.mkfserr
+mkfserr=$(mktemp)
+mkfs -t $FILE_SYSTEM "$IMG_PATH" 1>/dev/null 2>$mkfserr
 mkfscode=$?
 if [[ $mkfscode -ne 0 ]]; then
 	echo Failed to create file system... mkfs exited with code $mkfscode >&2
-	err=$(cat .mkfserr)
+	err=$(cat $mkfserr)
 	
 	if [[ -n $err ]]; then
 		echo "Error text:" 1>&2
 	fi
 
-	rm .mkfserr
 	exit $MKFS_ERROR
 fi
-rm .mkfserr
 
 echo Done!
 echo Now you can mount $IMG_PATH where you want using:
