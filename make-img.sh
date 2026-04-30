@@ -90,10 +90,10 @@ case $SIZE_UNIT in
 	;;
 esac
 
-#if ! [[ $SIZE =~ '^[0-9]+$' ]]; then
-#	echo "--size must be a number" >&2
-#	exit $WRONG_FLAG
-#fi
+if ! [[ $SIZE =~ ^[0-9]+$ ]]; then
+	echo "--size must be a number" >&2
+	exit $WRONG_FLAG
+fi
 
 
 if [[ -z $IMG_PATH ]]; then
